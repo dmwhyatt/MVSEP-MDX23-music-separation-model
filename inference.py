@@ -15,6 +15,7 @@ import torch.nn as nn
 import os
 import argparse
 import soundfile as sf
+import gc
 
 from demucs.states import load_model
 from demucs import pretrained
@@ -863,6 +864,14 @@ def predict_with_model(options):
             output_name = os.path.splitext(os.path.basename(input_audio))[0] + '_{}.wav'.format('instrum2')
             sf.write(output_folder + '/' + output_name, inst2, sr, subtype='FLOAT')
             print('File created: {}'.format(output_folder + '/' + output_name))
+
+        # Explicitly release per-file buffers before processing next file.
+        del result, sample_rates, audio, inst
+        if not only_vocals:
+            del inst2
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     if update_percent_func is not None:
         val = 100
